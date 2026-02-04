@@ -11,12 +11,12 @@ export async function GET(request: Request, { params }: RouteParams) {
     const { searchParams } = new URL(request.url);
     const limit = parseInt(searchParams.get("limit") || "50", 10);
 
-    const leaderboard = loadLeaderboard(id);
+    const leaderboard = await loadLeaderboard(id);
     if (!leaderboard) {
       return Response.json({ error: "Leaderboard not found" }, { status: 404 });
     }
 
-    const tweets = getLeaderboardTweets(id, limit);
+    const tweets = await getLeaderboardTweets(id, limit);
     return Response.json({ tweets });
   } catch (err) {
     return Response.json(

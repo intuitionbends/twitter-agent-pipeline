@@ -17,7 +17,7 @@ interface RouteParams {
 // POST /api/leaderboards/[id]/scrape - Scrape a leaderboard (SSE)
 export async function POST(_request: Request, { params }: RouteParams) {
   const { id } = await params;
-  const leaderboard = loadLeaderboard(id);
+  const leaderboard = await loadLeaderboard(id);
 
   if (!leaderboard) {
     return Response.json({ error: "Leaderboard not found" }, { status: 404 });
@@ -44,7 +44,7 @@ export async function POST(_request: Request, { params }: RouteParams) {
     );
   }
 
-  markScrapingStarted(id);
+  await markScrapingStarted(id);
 
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
@@ -85,7 +85,7 @@ export async function POST(_request: Request, { params }: RouteParams) {
         );
 
         // Complete the scrape
-        completeScraping(id, result.tweets, result.tokensUsed);
+        await completeScraping(id, result.tweets, result.tokensUsed);
 
         send("complete", {
           leaderboardId: id,
@@ -94,7 +94,7 @@ export async function POST(_request: Request, { params }: RouteParams) {
         });
       } catch (err) {
         const errorMsg = err instanceof Error ? err.message : String(err);
-        failScraping(id, errorMsg);
+        await failScraping(id, errorMsg);
         send("error", { leaderboardId: id, message: errorMsg });
       } finally {
         controller.close();

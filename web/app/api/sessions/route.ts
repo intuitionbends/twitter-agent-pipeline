@@ -4,7 +4,7 @@ import {
 } from "@pipeline/session/store.js";
 
 export async function GET() {
-  const sessions = listSessions();
+  const sessions = await listSessions();
   return Response.json({ sessions });
 }
 
@@ -23,7 +23,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const session = createSession(name, searchNames);
+    const session = await createSession(name, searchNames);
     return Response.json(session, { status: 201 });
   } catch (err) {
     return Response.json(

@@ -1,10 +1,10 @@
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
+import { writeFileSync, existsSync, mkdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { PROJECT_ROOT } from "../config.js";
+import { query } from "../db/query.js";
 import type { ScrapedTweet } from "../types.js";
 
 const DATA_DIR = resolve(PROJECT_ROOT, "data");
-const SEEN_FILE = resolve(DATA_DIR, "seen.json");
 
 function ensureDataDir(): void {
   if (!existsSync(DATA_DIR)) {
@@ -12,28 +12,56 @@ function ensureDataDir(): void {
   }
 }
 
+// Database row type
+interface DbSeenUrl {
+  url: string;
+  seen_at: Date;
+}
+
 /**
  * Load the set of previously seen tweet URLs.
  */
-export function loadSeenUrls(): Set<string> {
-  if (!existsSync(SEEN_FILE)) {
-    return new Set();
-  }
-  try {
-    const raw = readFileSync(SEEN_FILE, "utf-8");
-    const urls: string[] = JSON.parse(raw);
-    return new Set(urls);
-  } catch {
-    return new Set();
-  }
+export async function loadSeenUrls(): Promise<Set<string>> {
+  const rows = await query<DbSeenUrl>(`SELECT url FROM seen_urls`);
+  return new Set(rows.map((r) => r.url));
 }
 
 /**
  * Save the set of seen tweet URLs.
+ * Performs a bulk upsert to add new URLs.
  */
-export function saveSeenUrls(urls: Set<string>): void {
-  ensureDataDir();
-  writeFileSync(SEEN_FILE, JSON.stringify([...urls], null, 2));
+export async function saveSeenUrls(urls: Set<string>): Promise<void> {
+  if (urls.size === 0) return;
+
+  // Batch insert new URLs, ignoring conflicts
+  const urlArray = [...urls];
+  for (const url of urlArray) {
+    await query(
+      `INSERT INTO seen_urls (url) VALUES ($1) ON CONFLICT (url) DO NOTHING`,
+      [url]
+    );
+  }
+}
+
+/**
+ * Add a single URL to seen URLs.
+ */
+export async function addSeenUrl(url: string): Promise<void> {
+  await query(
+    `INSERT INTO seen_urls (url) VALUES ($1) ON CONFLICT (url) DO NOTHING`,
+    [url]
+  );
+}
+
+/**
+ * Check if a URL has been seen before.
+ */
+export async function hasSeenUrl(url: string): Promise<boolean> {
+  const rows = await query<DbSeenUrl>(
+    `SELECT url FROM seen_urls WHERE url = $1 LIMIT 1`,
+    [url]
+  );
+  return rows.length > 0;
 }
 
 /**
@@ -55,7 +83,7 @@ export function deduplicateTweets(
 }
 
 /**
- * Save scraped tweets to a timestamped file.
+ * Save scraped tweets to a timestamped file (for debugging/archiving).
  */
 export function saveScrapeResults(tweets: ScrapedTweet[]): string {
   ensureDataDir();

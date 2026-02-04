@@ -57,9 +57,9 @@ program
     );
 
     // Deduplicate
-    const seen = loadSeenUrls();
+    const seen = await loadSeenUrls();
     const newTweets = deduplicateTweets(allTweets, seen);
-    saveSeenUrls(seen);
+    await saveSeenUrls(seen);
 
     if (newTweets.length === 0) {
       console.log("\nNo new tweets found (all duplicates or empty results).");

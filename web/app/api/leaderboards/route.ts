@@ -8,7 +8,7 @@ import { z } from "zod";
 // GET /api/leaderboards - List all leaderboards
 export async function GET() {
   try {
-    const leaderboards = listLeaderboards();
+    const leaderboards = await listLeaderboards();
     return Response.json({ leaderboards });
   } catch (err) {
     return Response.json(
@@ -29,7 +29,7 @@ export async function POST(request: Request) {
     const body = await request.json();
     const parsed = CreateLeaderboardSchema.parse(body);
 
-    const leaderboard = createLeaderboard(parsed.name, parsed.sources);
+    const leaderboard = await createLeaderboard(parsed.name, parsed.sources);
     return Response.json({ leaderboard }, { status: 201 });
   } catch (err) {
     return Response.json(

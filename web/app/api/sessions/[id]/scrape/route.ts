@@ -10,7 +10,7 @@ export async function POST(
   let session;
   try {
     const { id } = await params;
-    session = loadSession(id);
+    session = await loadSession(id);
   } catch {
     return Response.json({ error: "Session not found" }, { status: 404 });
   }
@@ -84,7 +84,7 @@ export async function POST(
         }
 
         // Save scraped tweets into the session (re-load to get latest state)
-        const latest = loadSession(session.id);
+        const latest = await loadSession(session.id);
         latest.scrapedTweets = allTweets;
         latest.scrapeTokens = totalTokens;
         latest.selectedTweetIds = [];
@@ -92,7 +92,7 @@ export async function POST(
         latest.chosenSampleId = undefined;
         latest.finalText = undefined;
         latest.stage = "scraped";
-        saveSession(latest);
+        await saveSession(latest);
 
         send("complete", {
           totalFound: allTweets.length,

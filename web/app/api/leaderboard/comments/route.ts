@@ -27,7 +27,7 @@ export async function POST(request: Request) {
     }
 
     // Find the tweet across all leaderboards
-    const tweet = findTweetById(tweetId);
+    const tweet = await findTweetById(tweetId);
     if (!tweet) {
       return Response.json(
         { error: "Tweet not found in any leaderboard" },

@@ -11,7 +11,7 @@ export async function GET(
 ) {
   const { id } = await params;
   try {
-    const session = loadSession(id);
+    const session = await loadSession(id);
     return Response.json(session);
   } catch {
     return Response.json({ error: "Session not found" }, { status: 404 });
@@ -24,7 +24,7 @@ export async function PATCH(
 ) {
   const { id } = await params;
   try {
-    const session = loadSession(id);
+    const session = await loadSession(id);
     const body = await request.json();
 
     if (body.selectedTweetIds !== undefined) {
@@ -46,7 +46,7 @@ export async function PATCH(
       session.stage = body.stage as SessionStage;
     }
 
-    saveSession(session);
+    await saveSession(session);
     return Response.json(session);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -62,7 +62,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const deleted = deleteSession(id);
+  const deleted = await deleteSession(id);
   if (!deleted) {
     return Response.json({ error: "Session not found" }, { status: 404 });
   }

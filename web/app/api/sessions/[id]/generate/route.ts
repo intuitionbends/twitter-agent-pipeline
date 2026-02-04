@@ -9,7 +9,7 @@ export async function POST(
   let session;
   try {
     const { id } = await params;
-    session = loadSession(id);
+    session = await loadSession(id);
   } catch {
     return Response.json({ error: "Session not found" }, { status: 404 });
   }
@@ -74,7 +74,7 @@ export async function POST(
         session.samples = result.samples;
         session.generateTokens = result.tokensUsed;
         session.stage = "generated";
-        saveSession(session);
+        await saveSession(session);
 
         send("complete", {
           samples: result.samples,

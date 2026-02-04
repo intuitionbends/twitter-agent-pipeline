@@ -39,7 +39,7 @@ export async function scrapeLeaderboardById(leaderboardId: string): Promise<void
     return;
   }
 
-  const leaderboard = loadLeaderboard(leaderboardId);
+  const leaderboard = await loadLeaderboard(leaderboardId);
   if (!leaderboard) {
     throw new Error(`Leaderboard ${leaderboardId} not found`);
   }
@@ -49,7 +49,7 @@ export async function scrapeLeaderboardById(leaderboardId: string): Promise<void
   }
 
   scrapingLeaderboardIds.add(leaderboardId);
-  markScrapingStarted(leaderboardId);
+  await markScrapingStarted(leaderboardId);
 
   try {
     console.log(`[Leaderboard ${leaderboard.name}] Starting scrape...`);
@@ -63,7 +63,7 @@ export async function scrapeLeaderboardById(leaderboardId: string): Promise<void
     const result = await scrapeLeaderboard(appConfig.xaiApiKey, leaderboard);
 
     // Update leaderboard with new tweets
-    completeScraping(leaderboardId, result.tweets, result.tokensUsed);
+    await completeScraping(leaderboardId, result.tweets, result.tokensUsed);
 
     console.log(
       `[Leaderboard ${leaderboard.name}] Scrape complete: ${result.tweets.length} tweets, ` +
@@ -72,7 +72,7 @@ export async function scrapeLeaderboardById(leaderboardId: string): Promise<void
   } catch (err) {
     const errorMsg = err instanceof Error ? err.message : String(err);
     console.error(`[Leaderboard ${leaderboard.name}] Scrape failed:`, errorMsg);
-    failScraping(leaderboardId, errorMsg);
+    await failScraping(leaderboardId, errorMsg);
     throw err;
   } finally {
     scrapingLeaderboardIds.delete(leaderboardId);
@@ -83,7 +83,7 @@ export async function scrapeLeaderboardById(leaderboardId: string): Promise<void
  * Run cron job: scrape all leaderboards that need updating.
  */
 async function runCronJob(): Promise<void> {
-  const leaderboards = listLeaderboards();
+  const leaderboards = await listLeaderboards();
   const now = new Date();
 
   console.log(`[Cron] Checking ${leaderboards.length} leaderboards...`);
@@ -113,8 +113,8 @@ async function runCronJob(): Promise<void> {
 /**
  * Start the global cron job that checks all leaderboards.
  */
-export function startLeaderboardCron(intervalHours?: number): void {
-  const config = loadGlobalConfig();
+export async function startLeaderboardCron(intervalHours?: number): Promise<void> {
+  const config = await loadGlobalConfig();
   const hours = intervalHours ?? config.scrapeIntervalHours;
 
   // Stop existing job if running
@@ -129,7 +129,7 @@ export function startLeaderboardCron(intervalHours?: number): void {
   );
 
   // Update config
-  saveGlobalConfig({ ...config, cronEnabled: true, scrapeIntervalHours: hours });
+  await saveGlobalConfig({ ...config, cronEnabled: true, scrapeIntervalHours: hours });
 
   // Schedule the cron job
   cronJob = cron.schedule(cronExpression, () => {
@@ -147,7 +147,7 @@ export function startLeaderboardCron(intervalHours?: number): void {
 /**
  * Stop the global cron job.
  */
-export function stopLeaderboardCron(): void {
+export async function stopLeaderboardCron(): Promise<void> {
   if (cronJob) {
     cronJob.stop();
     cronJob = null;
@@ -155,8 +155,8 @@ export function stopLeaderboardCron(): void {
   }
 
   // Update config
-  const config = loadGlobalConfig();
-  saveGlobalConfig({ ...config, cronEnabled: false });
+  const config = await loadGlobalConfig();
+  await saveGlobalConfig({ ...config, cronEnabled: false });
 }
 
 /**
@@ -176,12 +176,12 @@ export function isLeaderboardScraping(leaderboardId: string): boolean {
 /**
  * Get global cron status.
  */
-export function getCronStatus(): {
+export async function getCronStatus(): Promise<{
   cronEnabled: boolean;
   scrapeIntervalHours: number;
   activeScrapesCount: number;
-} {
-  const config = loadGlobalConfig();
+}> {
+  const config = await loadGlobalConfig();
   return {
     cronEnabled: cronJob !== null,
     scrapeIntervalHours: config.scrapeIntervalHours,

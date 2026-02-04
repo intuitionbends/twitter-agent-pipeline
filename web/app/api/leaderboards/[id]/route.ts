@@ -15,7 +15,7 @@ interface RouteParams {
 export async function GET(_request: Request, { params }: RouteParams) {
   try {
     const { id } = await params;
-    const leaderboard = loadLeaderboard(id);
+    const leaderboard = await loadLeaderboard(id);
 
     if (!leaderboard) {
       return Response.json({ error: "Leaderboard not found" }, { status: 404 });
@@ -46,20 +46,20 @@ export async function PATCH(request: Request, { params }: RouteParams) {
     const body = await request.json();
     const parsed = UpdateLeaderboardSchema.parse(body);
 
-    let leaderboard = loadLeaderboard(id);
+    let leaderboard = await loadLeaderboard(id);
     if (!leaderboard) {
       return Response.json({ error: "Leaderboard not found" }, { status: 404 });
     }
 
     // Update sources separately if provided
     if (parsed.sources) {
-      leaderboard = updateLeaderboardSources(id, parsed.sources);
+      leaderboard = await updateLeaderboardSources(id, parsed.sources);
     }
 
     // Update other settings
     const { sources: _, ...settings } = parsed;
     if (Object.keys(settings).length > 0) {
-      leaderboard = updateLeaderboardSettings(id, settings);
+      leaderboard = await updateLeaderboardSettings(id, settings);
     }
 
     return Response.json({ leaderboard });
@@ -75,7 +75,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
 export async function DELETE(_request: Request, { params }: RouteParams) {
   try {
     const { id } = await params;
-    const deleted = deleteLeaderboard(id);
+    const deleted = await deleteLeaderboard(id);
 
     if (!deleted) {
       return Response.json({ error: "Leaderboard not found" }, { status: 404 });

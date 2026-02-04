@@ -9,7 +9,7 @@ export async function POST(
   let session;
   try {
     const { id } = await params;
-    session = loadSession(id);
+    session = await loadSession(id);
   } catch {
     return Response.json({ error: "Session not found" }, { status: 404 });
   }
@@ -50,11 +50,11 @@ export async function POST(
         );
 
         // Save analysis into the session (re-load to get latest state)
-        const latest = loadSession(session.id);
+        const latest = await loadSession(session.id);
         latest.analysis = result.analysis;
         latest.analyzeTokens = result.tokensUsed;
         latest.stage = "analyzed";
-        saveSession(latest);
+        await saveSession(latest);
 
         send("complete", {
           analysis: result.analysis,
