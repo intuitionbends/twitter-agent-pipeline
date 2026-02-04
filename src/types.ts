@@ -79,13 +79,23 @@ export const ContentIdeaSchema = z.object({
   angle: z.string(),
   suggestedFormat: z.enum(["thread", "single", "poll", "media"]),
   relevanceScore: z.number().min(1).max(10),
+  sourceTweetIds: z.array(z.string()).default([]),
 });
 
 export type ContentIdea = z.infer<typeof ContentIdeaSchema>;
 
+export const TopicWithTweetsSchema = z.object({
+  topic: z.string(),
+  explanation: z.string(),
+  tweetIds: z.array(z.string()).default([]),
+});
+
+export type TopicWithTweets = z.infer<typeof TopicWithTweetsSchema>;
+
 export const TrendAnalysisSchema = z.object({
   summary: z.string(),
   trendingTopics: z.array(z.string()).default([]),
+  topicsWithTweets: z.array(TopicWithTweetsSchema).default([]),
   contentIdeas: z.array(ContentIdeaSchema).default([]),
 });
 

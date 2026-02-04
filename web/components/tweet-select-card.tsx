@@ -1,6 +1,11 @@
 import { cn } from "@/lib/utils";
 import type { ScrapedTweet } from "@pipeline/types.js";
 
+/** Strip t.co links from tweet text for cleaner display */
+function cleanTweetText(text: string): string {
+  return text.replace(/\s*https?:\/\/t\.co\/\w+/g, "").trim();
+}
+
 interface TweetSelectCardProps {
   tweet: ScrapedTweet;
   selected: boolean;
@@ -40,7 +45,7 @@ export function TweetSelectCard({
           <span>{tweet.retweets.toLocaleString()} RTs</span>
         </div>
         <p className="text-sm text-zinc-300 whitespace-pre-wrap line-clamp-3">
-          {tweet.text}
+          {cleanTweetText(tweet.text)}
         </p>
         {tweet.imageUrls && tweet.imageUrls.length > 0 && (
           <div className="flex gap-1.5 mt-1.5 overflow-x-auto">

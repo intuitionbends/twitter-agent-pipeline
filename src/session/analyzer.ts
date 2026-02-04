@@ -41,6 +41,15 @@ export function parseAnalysisResponse(text: string): TrendAnalysis {
       trendingTopics: Array.isArray(parsed.trendingTopics)
         ? parsed.trendingTopics.map(String)
         : [],
+      topicsWithTweets: Array.isArray(parsed.topicsWithTweets)
+        ? parsed.topicsWithTweets.map((topic: Record<string, unknown>) => ({
+            topic: String(topic.topic ?? ""),
+            explanation: String(topic.explanation ?? ""),
+            tweetIds: Array.isArray(topic.tweetIds)
+              ? topic.tweetIds.map(String)
+              : [],
+          }))
+        : [],
       contentIdeas: Array.isArray(parsed.contentIdeas)
         ? parsed.contentIdeas.map((idea: Record<string, unknown>) => ({
             title: String(idea.title ?? ""),
@@ -51,6 +60,9 @@ export function parseAnalysisResponse(text: string): TrendAnalysis {
               10,
               Math.max(1, Number(idea.relevanceScore ?? 5))
             ),
+            sourceTweetIds: Array.isArray(idea.sourceTweetIds)
+              ? idea.sourceTweetIds.map(String)
+              : [],
           }))
         : [],
     };
@@ -59,6 +71,7 @@ export function parseAnalysisResponse(text: string): TrendAnalysis {
     return {
       summary: cleaned,
       trendingTopics: [],
+      topicsWithTweets: [],
       contentIdeas: [],
     };
   }

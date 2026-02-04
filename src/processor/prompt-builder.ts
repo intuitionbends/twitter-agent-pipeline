@@ -207,6 +207,7 @@ export function buildAnalysisPrompt(
 ): string {
   const tweetsJson = JSON.stringify(
     tweets.map((t) => ({
+      id: t.id,
       text: t.text,
       author: `@${t.handle}`,
       engagement: { views: t.views, likes: t.likes, retweets: t.retweets },
@@ -234,24 +235,38 @@ Return a JSON response with:
 
 2. **trendingTopics**: Array of top 5 topics/themes as strings, each with a brief explanation (e.g., "Topic: explanation of why it's trending")
 
-3. **contentIdeas**: Array of 5 content ideas that could perform well based on what's resonating, each with:
+3. **topicsWithTweets**: Array of the same 5 topics, but with tweet categorization. Each tweet should be assigned to the most relevant topic. Each entry has:
+   - topic: The topic name (short, 2-4 words)
+   - explanation: Why this topic is trending (1 sentence)
+   - tweetIds: Array of tweet IDs that belong to this topic
+
+4. **contentIdeas**: Array of 5 content ideas that could perform well based on what's resonating, each with:
    - title: A compelling hook/headline for the content
    - description: What the content would cover (1-2 sentences)
    - angle: The unique perspective or approach that makes it stand out
    - suggestedFormat: One of "thread", "single", "poll", "media"
    - relevanceScore: 1-10 rating of how likely this would resonate based on the data
+   - sourceTweetIds: Array of tweet IDs that inspired this content idea (reference the specific tweets this idea builds upon)
 
 Return ONLY valid JSON in this exact format (no markdown, no code fences):
 {
   "summary": "...",
   "trendingTopics": ["Topic 1: explanation", "Topic 2: explanation", ...],
+  "topicsWithTweets": [
+    {
+      "topic": "Topic Name",
+      "explanation": "Why this is trending",
+      "tweetIds": ["tweet-id-1", "tweet-id-2"]
+    }
+  ],
   "contentIdeas": [
     {
       "title": "...",
       "description": "...",
       "angle": "...",
       "suggestedFormat": "thread",
-      "relevanceScore": 8
+      "relevanceScore": 8,
+      "sourceTweetIds": ["tweet-id-1", "tweet-id-3"]
     }
   ]
 }
