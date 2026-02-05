@@ -287,21 +287,33 @@ export async function markScrapingStarted(id: string): Promise<void> {
 /**
  * Complete scraping for a leaderboard with new tweets.
  */
+// Max tweets to keep per leaderboard (prevents unbounded growth)
+const MAX_ACCUMULATED_TWEETS = 200;
+
 export async function completeScraping(
   id: string,
-  tweets: TrendingTweet[],
+  newTweets: TrendingTweet[],
   tokensUsed: { input: number; output: number }
 ): Promise<void> {
   const lb = await loadLeaderboard(id);
   if (!lb) return;
 
-  // Sort by engagement score descending
-  const sorted = [...tweets].sort(
-    (a, b) => b.engagementScore - a.engagementScore
-  );
+  // Merge new tweets with existing — new version wins on duplicate ID
+  const tweetMap = new Map<string, TrendingTweet>();
+  for (const tweet of lb.tweets) {
+    tweetMap.set(tweet.id, tweet);
+  }
+  for (const tweet of newTweets) {
+    tweetMap.set(tweet.id, tweet);
+  }
+
+  // Sort by engagement score descending, cap at limit
+  const merged = Array.from(tweetMap.values())
+    .sort((a, b) => b.engagementScore - a.engagementScore)
+    .slice(0, MAX_ACCUMULATED_TWEETS);
 
   // Assign ranks
-  const ranked = sorted.map((tweet, index) => ({
+  const ranked = merged.map((tweet, index) => ({
     ...tweet,
     rank: index + 1,
   }));

@@ -97,8 +97,12 @@ export default function LeaderboardDetailPage() {
           return `  Grok returned ${d.parsedCount} tweets, ${d.filteredCount} after filtering`;
         }
         return String(d.message);
+      case "source-start":
+        return String(d.message);
+      case "source-expanding":
+        return `  ${String(d.message)}`;
       case "source-complete":
-        return `Done "${d.sourceValue}" - ${d.found} tweets (${d.finalWindow} window)`;
+        return `${String(d.message)} (${d.tweetsFound ?? 0} tweets)`;
       case "source-error":
         return `Error "${d.sourceValue}": ${d.error}`;
       case "complete":
@@ -183,6 +187,7 @@ export default function LeaderboardDetailPage() {
                   "text-zinc-400",
                   e.event === "error" && "text-red-400",
                   e.event === "source-error" && "text-red-400",
+                  e.event === "source-expanding" && "text-amber-400",
                   e.event === "complete" && "text-green-400 font-medium",
                   e.event === "source-complete" && "text-zinc-300"
                 )}
@@ -255,6 +260,9 @@ export default function LeaderboardDetailPage() {
                           title="Engagement score"
                         >
                           {formatNumber(tweet.engagementScore)} score
+                        </span>
+                        <span className="ml-auto text-zinc-600" title="Scraped at">
+                          {new Date(tweet.scrapedAt).toLocaleDateString()}
                         </span>
                       </div>
                     </div>

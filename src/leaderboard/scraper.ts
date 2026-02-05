@@ -225,8 +225,25 @@ function parseGrokResponse(responseText: string): unknown[] {
   }
 }
 
+/**
+ * Get the next larger time window for fallback when no tweets are found.
+ * Gradually expands: 1h → 12h → 24h → 48h → 7d → 14d → 30d
+ */
+function getExpandedTimeWindow(current: TimeWindow): TimeWindow | null {
+  const expansion: Record<TimeWindow, TimeWindow | null> = {
+    "1h": "12h",
+    "12h": "24h",
+    "24h": "48h",
+    "48h": "7d",
+    "7d": "14d",
+    "14d": "30d",
+    "30d": null,
+  };
+  return expansion[current];
+}
+
 export interface LeaderboardScrapeProgress {
-  type: "source-start" | "source-complete" | "source-error";
+  type: "source-start" | "source-complete" | "source-error" | "source-expanding";
   source: LeaderboardSource;
   message: string;
   tweetsFound?: number;
@@ -239,15 +256,16 @@ export interface LeaderboardScrapeResult {
 }
 
 /**
- * Scrape a single source (handle or topic).
+ * Perform a single Grok API request for a source with a specific time window.
  */
-async function scrapeSource(
+async function doSourceRequest(
   apiKey: string,
   source: LeaderboardSource,
-  leaderboard: Leaderboard
-): Promise<{ tweets: TrendingTweet[]; tokensUsed: { input: number; output: number } }> {
+  leaderboard: Leaderboard,
+  timeWindow: TimeWindow
+): Promise<{ tweets: TrendingTweet[]; tokensUsed: { input: number; output: number }; parsedCount: number }> {
   const systemPrompt = buildSystemPrompt();
-  const fromDate = getFromDate(leaderboard.timeWindow);
+  const fromDate = getFromDate(timeWindow);
 
   // Build prompt based on source type
   const userPrompt =
@@ -255,14 +273,14 @@ async function scrapeSource(
       ? buildHandlePrompt(
           source.value.replace(/^@/, ""),
           leaderboard.maxTweetsPerSource,
-          leaderboard.timeWindow,
+          timeWindow,
           leaderboard.minViews,
           leaderboard.minLikes
         )
       : buildTopicPrompt(
           source.value,
           leaderboard.maxTweetsPerSource,
-          leaderboard.timeWindow,
+          timeWindow,
           leaderboard.minViews,
           leaderboard.minLikes
         );
@@ -286,9 +304,8 @@ async function scrapeSource(
     tools: [xSearchTool],
   };
 
-  console.log(`\n--- Leaderboard Scrape [${source.type}: ${source.value}] ---`);
+  console.log(`\n--- Leaderboard Scrape [${source.type}: ${source.value}] (window: ${timeWindow}) ---`);
   console.log(`Making API request to ${GROK_API_URL}`);
-  console.log(`Request body:`, JSON.stringify(body, null, 2));
 
   let response;
   let lastError: Error | null = null;
@@ -363,7 +380,6 @@ async function scrapeSource(
 
   for (const item of parsed) {
     try {
-      // First validate as ScrapedTweet
       const base = ScrapedTweetSchema.parse({
         ...(item as Record<string, unknown>),
         scrapedAt: now,
@@ -374,7 +390,6 @@ async function scrapeSource(
       if (leaderboard.minViews && base.views < leaderboard.minViews) continue;
       if (leaderboard.minLikes && base.likes < leaderboard.minLikes) continue;
 
-      // Convert to TrendingTweet
       const trendingTweet: TrendingTweet = {
         ...base,
         sourceType: source.type,
@@ -388,8 +403,47 @@ async function scrapeSource(
     }
   }
 
-  console.log(`Found ${tweets.length} tweets from ${source.value}`);
-  return { tweets, tokensUsed };
+  console.log(`Found ${tweets.length} tweets (${parsed.length} parsed) from ${source.value} [${timeWindow}]`);
+  return { tweets, tokensUsed, parsedCount: parsed.length };
+}
+
+/**
+ * Scrape a single source with automatic time window expansion.
+ * Starts with the leaderboard's configured window, expands if no tweets found.
+ */
+async function scrapeSource(
+  apiKey: string,
+  source: LeaderboardSource,
+  leaderboard: Leaderboard,
+  onProgress?: (progress: LeaderboardScrapeProgress) => void
+): Promise<{ tweets: TrendingTweet[]; tokensUsed: { input: number; output: number } }> {
+  let currentWindow = leaderboard.timeWindow;
+  const totalTokens = { input: 0, output: 0 };
+
+  while (true) {
+    const result = await doSourceRequest(apiKey, source, leaderboard, currentWindow);
+    totalTokens.input += result.tokensUsed.input;
+    totalTokens.output += result.tokensUsed.output;
+
+    if (result.tweets.length > 0) {
+      return { tweets: result.tweets, tokensUsed: totalTokens };
+    }
+
+    // No tweets found — try expanding the time window
+    const expandedWindow = getExpandedTimeWindow(currentWindow);
+    if (!expandedWindow) {
+      console.log(`  No tweets found for ${source.value} and no further expansion (was: ${currentWindow})`);
+      return { tweets: [], tokensUsed: totalTokens };
+    }
+
+    console.log(`  No tweets for ${source.value} with ${currentWindow}, expanding to ${expandedWindow}...`);
+    onProgress?.({
+      type: "source-expanding",
+      source,
+      message: `No tweets with ${currentWindow} window, expanding to ${expandedWindow}...`,
+    });
+    currentWindow = expandedWindow;
+  }
 }
 
 /**
@@ -412,7 +466,7 @@ export async function scrapeLeaderboard(
     });
 
     try {
-      const result = await scrapeSource(apiKey, source, leaderboard);
+      const result = await scrapeSource(apiKey, source, leaderboard, onProgress);
 
       // Deduplicate by tweet ID
       for (const tweet of result.tweets) {
