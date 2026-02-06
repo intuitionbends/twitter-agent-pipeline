@@ -3,9 +3,7 @@
 import { useState } from "react";
 import useSWR from "swr";
 import { useSessions } from "@/hooks/use-sessions";
-import { cn } from "@/lib/utils";
-
-const fetcher = (url: string) => fetch(url).then((r) => r.json());
+import { cn, fetcher } from "@/lib/utils";
 
 interface ConfigStatus {
   valid: boolean;

@@ -1,7 +1,7 @@
 import useSWR from "swr";
 import type { SearchConfig } from "@pipeline/types.js";
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json());
+import { fetcher } from "@/lib/utils";
 
 export function useSearches() {
   const { data, error, isLoading, mutate } = useSWR<{ searches: SearchConfig[] }>(

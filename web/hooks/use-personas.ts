@@ -7,7 +7,7 @@ export interface PersonaSummary {
   isDefault: boolean;
 }
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json());
+import { fetcher } from "@/lib/utils";
 
 export function usePersonas() {
   const { data, isLoading, mutate } = useSWR<{ personas: PersonaSummary[] }>(

@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import useSWR from "swr";
 import type { PersonaConfig } from "@pipeline/types.js";
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json());
+import { fetcher } from "@/lib/utils";
 
 export default function PersonaPage() {
   const { data: persona, isLoading, mutate } = useSWR<PersonaConfig>("/api/persona", fetcher);

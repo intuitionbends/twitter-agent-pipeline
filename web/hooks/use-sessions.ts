@@ -1,7 +1,6 @@
 import useSWR from "swr";
 import type { Session, SessionStage } from "@pipeline/types.js";
-
-const fetcher = (url: string) => fetch(url).then((r) => r.json());
+import { fetcher } from "@/lib/utils";
 
 export interface SessionSummary {
   id: string;

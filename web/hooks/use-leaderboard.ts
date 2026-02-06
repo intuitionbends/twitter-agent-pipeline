@@ -5,7 +5,7 @@ import type {
   CommentSuggestion,
 } from "@pipeline/types.js";
 
-const fetcher = (url: string) => fetch(url).then((res) => res.json());
+import { fetcher } from "@/lib/utils";
 
 // Summary info returned from list endpoint
 interface LeaderboardSummary {

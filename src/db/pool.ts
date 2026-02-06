@@ -3,12 +3,15 @@ import "dotenv/config";
 
 /**
  * PostgreSQL connection pool with singleton pattern.
- * Prevents multiple pool instances during hot-reload in development.
+ * Cached on globalThis to survive hot-reload (dev) and share across
+ * Vercel serverless invocations within the same process (prod).
  */
 
 const globalForPg = globalThis as unknown as {
   pool: Pool | undefined;
 };
+
+const isServerless = !!process.env.VERCEL;
 
 export const pool =
   globalForPg.pool ??
@@ -18,8 +21,8 @@ export const pool =
       process.env.NODE_ENV === "production"
         ? { rejectUnauthorized: false }
         : false,
-    max: 10,
-    idleTimeoutMillis: 30000,
+    max: isServerless ? 3 : 10,
+    idleTimeoutMillis: isServerless ? 10000 : 30000,
     connectionTimeoutMillis: 10000,
   });
 
@@ -28,9 +31,8 @@ pool.on("error", (err) => {
   console.error("Database pool error:", err.message);
 });
 
-if (process.env.NODE_ENV !== "production") {
-  globalForPg.pool = pool;
-}
+// Always cache — survives hot-reload in dev and re-use in serverless
+globalForPg.pool = pool;
 
 /**
  * Check if database is configured.
